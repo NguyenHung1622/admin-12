@@ -5,6 +5,21 @@ const getAuthToken = () => {
   return localStorage.getItem("authToken");
 };
 
+// Helper function to set auth token
+export const setAuthToken = (token: string) => {
+  localStorage.setItem("authToken", token);
+};
+
+// Helper function to clear auth token
+export const clearAuthToken = () => {
+  localStorage.removeItem("authToken");
+};
+
+// Helper function to check if user is authenticated
+export const isAuthenticated = () => {
+  return !!getAuthToken();
+};
+
 // Helper function for API calls
 async function apiCall<T>(
   endpoint: string,
@@ -31,6 +46,15 @@ async function apiCall<T>(
 
   return response.json();
 }
+
+// Auth APIs
+export const authApi = {
+  login: (email: string, password: string) =>
+    apiCall<{ data: { token: string; user: any } }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+};
 
 // User/Admin APIs
 export const adminApi = {
