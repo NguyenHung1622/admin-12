@@ -54,6 +54,11 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+  register: (email: string, password: string, name: string) =>
+    apiCall<{ data: { token: string; user: any } }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, name }),
+    }),
 };
 
 // User/Admin APIs
