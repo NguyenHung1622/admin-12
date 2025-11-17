@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import EditCategoryDialog from "./EditCategoryDialog";
 import { toast } from "sonner";
+import { categoryApi } from "@/lib/api";
 
 interface Category {
   id: string;
@@ -20,29 +21,54 @@ interface Category {
 }
 
 const CategoryManagement = () => {
-  const [categories, setCategories] = useState<Category[]>([
-    { id: "1", name: "Điện tử", description: "Các sản phẩm điện tử", itemCount: 45 },
-    { id: "2", name: "Thời trang", description: "Quần áo và phụ kiện", itemCount: 123 },
-    { id: "3", name: "Gia dụng", description: "Đồ dùng gia đình", itemCount: 67 },
-  ]);
-
+  const [categories, setCategories] = useState<Category[]>([]);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const deleteCategory = (categoryId: string) => {
-    setCategories(categories.filter(cat => cat.id !== categoryId));
-    toast.success("Xóa danh mục thành công");
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setIsLoading(true);
+      const response = await categoryApi.getAll();
+      setCategories(response.data || []);
+    } catch (error) {
+      toast.error("Không thể tải danh sách danh mục");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const saveCategory = (category: Category) => {
-    if (isAddingNew) {
-      setCategories([...categories, { ...category, id: Date.now().toString() }]);
-      toast.success("Thêm danh mục thành công");
-    } else {
-      setCategories(categories.map(cat => cat.id === category.id ? category : cat));
-      toast.success("Cập nhật danh mục thành công");
+  const deleteCategory = async (categoryId: string) => {
+    try {
+      await categoryApi.delete(categoryId);
+      await fetchCategories();
+      toast.success("Xóa danh mục thành công");
+    } catch (error) {
+      toast.error("Không thể xóa danh mục");
+      console.error(error);
     }
-    setIsAddingNew(false);
+  };
+
+  const saveCategory = async (category: Category) => {
+    try {
+      if (isAddingNew) {
+        await categoryApi.create(category);
+        toast.success("Thêm danh mục thành công");
+      } else {
+        await categoryApi.update(category.id, category);
+        toast.success("Cập nhật danh mục thành công");
+      }
+      await fetchCategories();
+      setIsAddingNew(false);
+    } catch (error) {
+      toast.error(isAddingNew ? "Không thể thêm danh mục" : "Không thể cập nhật danh mục");
+      console.error(error);
+    }
   };
 
   const handleAddNew = () => {
@@ -79,7 +105,20 @@ const CategoryManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categories.map((category) => (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center">
+                  Đang tải...
+                </TableCell>
+              </TableRow>
+            ) : categories.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center">
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            ) : (
+              categories.map((category) => (
               <TableRow key={category.id}>
                 <TableCell className="font-medium">{category.name}</TableCell>
                 <TableCell>{category.description}</TableCell>
@@ -106,7 +145,8 @@ const CategoryManagement = () => {
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
