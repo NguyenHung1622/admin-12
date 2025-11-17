@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import ViewServiceDialog from "./ViewServiceDialog";
 import { toast } from "sonner";
+import { serviceApi } from "@/lib/api";
 
 interface Service {
   id: string;
@@ -22,17 +23,36 @@ interface Service {
 }
 
 const ServiceManagement = () => {
-  const [services, setServices] = useState<Service[]>([
-    { id: "1", name: "Lắp đặt điện", category: "Điện tử", price: 500000, status: "available" },
-    { id: "2", name: "Sửa chữa máy tính", category: "Điện tử", price: 300000, status: "available" },
-    { id: "3", name: "Vệ sinh nhà cửa", category: "Gia dụng", price: 200000, status: "unavailable" },
-  ]);
-
+  const [services, setServices] = useState<Service[]>([]);
   const [viewingService, setViewingService] = useState<Service | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const deleteService = (serviceId: string) => {
-    setServices(services.filter(service => service.id !== serviceId));
-    toast.success("Xóa dịch vụ thành công");
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    try {
+      setIsLoading(true);
+      const response = await serviceApi.getAll();
+      setServices(response.data || []);
+    } catch (error) {
+      toast.error("Không thể tải danh sách dịch vụ");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteService = async (serviceId: string) => {
+    try {
+      await serviceApi.delete(serviceId);
+      await fetchServices();
+      toast.success("Xóa dịch vụ thành công");
+    } catch (error) {
+      toast.error("Không thể xóa dịch vụ");
+      console.error(error);
+    }
   };
 
   return (
@@ -54,7 +74,20 @@ const ServiceManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {services.map((service) => (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  Đang tải...
+                </TableCell>
+              </TableRow>
+            ) : services.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            ) : (
+              services.map((service) => (
               <TableRow key={service.id}>
                 <TableCell className="font-medium">{service.name}</TableCell>
                 <TableCell>{service.category}</TableCell>
@@ -83,7 +116,8 @@ const ServiceManagement = () => {
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

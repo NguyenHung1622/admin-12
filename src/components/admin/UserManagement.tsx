@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Lock, LockOpen, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import EditUserDialog from "./EditUserDialog";
 import { toast } from "sonner";
+import { adminApi } from "@/lib/api";
 
 interface User {
   id: string;
@@ -22,31 +23,58 @@ interface User {
 }
 
 const UserManagement = () => {
-  const [users, setUsers] = useState<User[]>([
-    { id: "1", name: "Nguyễn Văn A", email: "nguyenvana@example.com", role: "Admin", status: "active" },
-    { id: "2", name: "Trần Thị B", email: "tranthib@example.com", role: "Người dùng", status: "active" },
-    { id: "3", name: "Lê Văn C", email: "levanc@example.com", role: "Người dùng", status: "locked" },
-  ]);
-
+  const [users, setUsers] = useState<User[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const toggleUserStatus = (userId: string) => {
-    setUsers(users.map(user => 
-      user.id === userId 
-        ? { ...user, status: user.status === "active" ? "locked" : "active" }
-        : user
-    ));
-    toast.success("Cập nhật trạng thái thành công");
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await adminApi.getAll();
+      setUsers(response.data || []);
+    } catch (error) {
+      toast.error("Không thể tải danh sách người dùng");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const deleteUser = (userId: string) => {
-    setUsers(users.filter(user => user.id !== userId));
-    toast.success("Xóa người dùng thành công");
+  const toggleUserStatus = async (userId: string) => {
+    try {
+      await adminApi.toggleStatus(userId);
+      await fetchUsers();
+      toast.success("Cập nhật trạng thái thành công");
+    } catch (error) {
+      toast.error("Không thể cập nhật trạng thái");
+      console.error(error);
+    }
   };
 
-  const updateUser = (updatedUser: User) => {
-    setUsers(users.map(user => user.id === updatedUser.id ? updatedUser : user));
-    toast.success("Cập nhật thông tin thành công");
+  const deleteUser = async (userId: string) => {
+    try {
+      await adminApi.delete(userId);
+      await fetchUsers();
+      toast.success("Xóa người dùng thành công");
+    } catch (error) {
+      toast.error("Không thể xóa người dùng");
+      console.error(error);
+    }
+  };
+
+  const updateUser = async (updatedUser: User) => {
+    try {
+      await adminApi.update(updatedUser.id, updatedUser);
+      await fetchUsers();
+      toast.success("Cập nhật thông tin thành công");
+    } catch (error) {
+      toast.error("Không thể cập nhật thông tin");
+      console.error(error);
+    }
   };
 
   return (
@@ -68,7 +96,20 @@ const UserManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  Đang tải...
+                </TableCell>
+              </TableRow>
+            ) : users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            ) : (
+              users.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
@@ -108,7 +149,8 @@ const UserManagement = () => {
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
