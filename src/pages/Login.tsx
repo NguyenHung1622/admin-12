@@ -2,16 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Lock, Mail, User } from "lucide-react";
+import * as z from "zod";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { authApi, setAuthToken } from "@/lib/api";
 import {
   Form,
   FormControl,
@@ -20,41 +18,24 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
-import { authApi, setAuthToken } from "@/lib/api";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
+// Login schema
 const loginSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .email({ message: "Email không hợp lệ" })
-    .max(255, { message: "Email không được quá 255 ký tự" }),
-  password: z
-    .string()
-    .min(6, { message: "Mật khẩu phải có ít nhất 6 ký tự" })
-    .max(100, { message: "Mật khẩu không được quá 100 ký tự" }),
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
 });
 
+// Register schema
 const registerSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, { message: "Tên phải có ít nhất 2 ký tự" })
-    .max(100, { message: "Tên không được quá 100 ký tự" }),
-  email: z
-    .string()
-    .trim()
-    .email({ message: "Email không hợp lệ" })
-    .max(255, { message: "Email không được quá 255 ký tự" }),
-  password: z
-    .string()
-    .min(6, { message: "Mật khẩu phải có ít nhất 6 ký tự" })
-    .max(100, { message: "Mật khẩu không được quá 100 ký tự" }),
-  confirmPassword: z
-    .string()
-    .min(6, { message: "Mật khẩu phải có ít nhất 6 ký tự" }),
+  name: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+  confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Mật khẩu không khớp",
   path: ["confirmPassword"],
@@ -64,8 +45,11 @@ type LoginFormData = z.infer<typeof loginSchema>;
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 const Login = () => {
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const navigate = useNavigate();
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -89,17 +73,11 @@ const Login = () => {
     try {
       setIsLoading(true);
       const response = await authApi.login(data.email, data.password);
-      
-      if (response.data?.token) {
-        setAuthToken(response.data.token);
-        toast.success("Đăng nhập thành công");
-        navigate("/admin");
-      } else {
-        toast.error("Đăng nhập thất bại");
-      }
+      setAuthToken(response.data.token);
+      toast.success("Đăng nhập thành công!");
+      navigate("/admin");
     } catch (error: any) {
       toast.error(error.message || "Đăng nhập thất bại");
-      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -108,41 +86,106 @@ const Login = () => {
   const onRegister = async (data: RegisterFormData) => {
     try {
       setIsLoading(true);
-      const response = await authApi.register(data.email, data.password, data.name);
-      
-      if (response.data?.token) {
-        setAuthToken(response.data.token);
-        toast.success("Đăng ký thành công");
-        navigate("/admin");
-      } else {
-        toast.error("Đăng ký thất bại");
-      }
+      await authApi.register(data.email, data.password, data.name);
+      setRegisteredEmail(data.email);
+      setShowOtpInput(true);
+      toast.success("Đăng ký thành công! Vui lòng kiểm tra email để lấy mã OTP.");
     } catch (error: any) {
-      toast.error(error.message || "Email có thể đã được sử dụng");
-      console.error("Register error:", error);
+      toast.error(error.message || "Đăng ký thất bại");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const onVerifyOtp = async () => {
+    if (otp.length !== 6) {
+      toast.error("Vui lòng nhập đầy đủ 6 số OTP");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await authApi.verify(registeredEmail, otp);
+      setAuthToken(response.data.token);
+      toast.success("Xác minh thành công!");
+      navigate("/admin");
+    } catch (error: any) {
+      toast.error(error.message || "Mã OTP không đúng");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (showOtpInput) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Xác minh tài khoản</CardTitle>
+            <CardDescription>
+              Mã OTP đã được gửi đến email: {registeredEmail}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nhập mã OTP (6 số)</Label>
+              <div className="flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={otp}
+                  onChange={setOtp}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Button
+                onClick={onVerifyOtp}
+                disabled={isLoading || otp.length !== 6}
+                className="w-full"
+              >
+                {isLoading ? "Đang xác minh..." : "Xác minh"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowOtpInput(false);
+                  setOtp("");
+                  setRegisteredEmail("");
+                }}
+                className="w-full"
+              >
+                Quay lại đăng ký
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Chào mừng
-          </CardTitle>
-          <CardDescription className="text-center">
-            Đăng nhập hoặc tạo tài khoản mới
-          </CardDescription>
+        <CardHeader>
+          <CardTitle>Admin Portal</CardTitle>
+          <CardDescription>Đăng nhập hoặc đăng ký tài khoản</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Đăng nhập</TabsTrigger>
               <TabsTrigger value="register">Đăng ký</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="login">
               <Form {...loginForm}>
                 <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
@@ -153,22 +196,16 @@ const Login = () => {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              {...field}
-                              type="email"
-                              placeholder="admin@example.com"
-                              className="pl-10"
-                              disabled={isLoading}
-                            />
-                          </div>
+                          <Input
+                            type="email"
+                            placeholder="admin@example.com"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={loginForm.control}
                     name="password"
@@ -176,27 +213,17 @@ const Login = () => {
                       <FormItem>
                         <FormLabel>Mật khẩu</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              {...field}
-                              type="password"
-                              placeholder="••••••••"
-                              className="pl-10"
-                              disabled={isLoading}
-                            />
-                          </div>
+                          <Input
+                            type="password"
+                            placeholder="••••••"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isLoading}
-                  >
+                  <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
                   </Button>
                 </form>
@@ -213,22 +240,15 @@ const Login = () => {
                       <FormItem>
                         <FormLabel>Tên</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              {...field}
-                              type="text"
-                              placeholder="Nguyễn Văn A"
-                              className="pl-10"
-                              disabled={isLoading}
-                            />
-                          </div>
+                          <Input
+                            placeholder="Nguyễn Văn A"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={registerForm.control}
                     name="email"
@@ -236,22 +256,16 @@ const Login = () => {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              {...field}
-                              type="email"
-                              placeholder="email@example.com"
-                              className="pl-10"
-                              disabled={isLoading}
-                            />
-                          </div>
+                          <Input
+                            type="email"
+                            placeholder="admin@example.com"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={registerForm.control}
                     name="password"
@@ -259,22 +273,16 @@ const Login = () => {
                       <FormItem>
                         <FormLabel>Mật khẩu</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              {...field}
-                              type="password"
-                              placeholder="••••••••"
-                              className="pl-10"
-                              disabled={isLoading}
-                            />
-                          </div>
+                          <Input
+                            type="password"
+                            placeholder="••••••"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={registerForm.control}
                     name="confirmPassword"
@@ -282,27 +290,17 @@ const Login = () => {
                       <FormItem>
                         <FormLabel>Xác nhận mật khẩu</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              {...field}
-                              type="password"
-                              placeholder="••••••••"
-                              className="pl-10"
-                              disabled={isLoading}
-                            />
-                          </div>
+                          <Input
+                            type="password"
+                            placeholder="••••••"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isLoading}
-                  >
+                  <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Đang đăng ký..." : "Đăng ký"}
                   </Button>
                 </form>
