@@ -64,6 +64,21 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ email, otp }),
     }),
+  forgotPassword: (email: string) =>
+    apiCall<{ data: { message: string } }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  verifyResetOtp: (email: string, otp: string) =>
+    apiCall<{ data: { reset_token: string } }>("/auth/verify-reset-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+    }),
+  resetPassword: (reset_token: string, new_password: string) =>
+    apiCall<{ data: { message: string } }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ reset_token, new_password }),
+    }),
 };
 
 // User/Admin APIs
