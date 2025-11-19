@@ -226,6 +226,14 @@ const Login = () => {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
                   </Button>
+                  <Button
+                    variant="link"
+                    onClick={() => navigate("/forgot-password")}
+                    className="w-full"
+                    type="button"
+                  >
+                    Quên mật khẩu?
+                  </Button>
                 </form>
               </Form>
             </TabsContent>
