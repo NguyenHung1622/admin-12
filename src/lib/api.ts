@@ -54,10 +54,10 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
-  register: (email: string, password: string, name: string) =>
+  register: (email: string, password: string, name: string, phone_number?: string, gender?: string) =>
     apiCall<{ data: { message: string } }>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name, phone_number, gender }),
     }),
   verify: (email: string, otp: string) =>
     apiCall<{ data: { token: string; user: any } }>("/auth/verify", {
