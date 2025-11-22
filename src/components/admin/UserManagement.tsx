@@ -15,11 +15,14 @@ import { toast } from "sonner";
 import { adminApi } from "@/lib/api";
 
 interface User {
-  id: string;
-  name: string;
+  id: number;
+  full_name: string;
   email: string;
-  role: string;
-  status: "active" | "locked";
+  phone_number?: string;
+  role_id: string;
+  is_active: boolean;
+  avatar?: string;
+  gender?: string;
 }
 
 const UserManagement = () => {
@@ -68,7 +71,7 @@ const UserManagement = () => {
 
   const updateUser = async (updatedUser: User) => {
     try {
-      await adminApi.update(updatedUser.id, updatedUser);
+      await adminApi.update(String(updatedUser.id), updatedUser);
       await fetchUsers();
       toast.success("Cập nhật thông tin thành công");
     } catch (error) {
@@ -90,6 +93,7 @@ const UserManagement = () => {
             <TableRow>
               <TableHead>Tên</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Số điện thoại</TableHead>
               <TableHead>Vai trò</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
@@ -111,12 +115,13 @@ const UserManagement = () => {
             ) : (
               users.map((user) => (
               <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.name}</TableCell>
+                <TableCell className="font-medium">{user.full_name}</TableCell>
                 <TableCell>{user.email}</TableCell>
-                <TableCell>{user.role}</TableCell>
+                <TableCell>{user.phone_number || "-"}</TableCell>
+                <TableCell>{user.role_id}</TableCell>
                 <TableCell>
-                  <Badge variant={user.status === "active" ? "default" : "destructive"}>
-                    {user.status === "active" ? "Hoạt động" : "Bị khóa"}
+                  <Badge variant={user.is_active ? "default" : "destructive"}>
+                    {user.is_active ? "Hoạt động" : "Bị khóa"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
@@ -131,9 +136,9 @@ const UserManagement = () => {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => toggleUserStatus(user.id)}
+                      onClick={() => toggleUserStatus(String(user.id))}
                     >
-                      {user.status === "active" ? (
+                      {user.is_active ? (
                         <Lock className="h-4 w-4" />
                       ) : (
                         <LockOpen className="h-4 w-4" />
@@ -142,7 +147,7 @@ const UserManagement = () => {
                     <Button
                       variant="destructive"
                       size="icon"
-                      onClick={() => deleteUser(user.id)}
+                      onClick={() => deleteUser(String(user.id))}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

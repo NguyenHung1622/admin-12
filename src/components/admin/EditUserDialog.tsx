@@ -24,11 +24,14 @@ import {
 } from "@/components/ui/select";
 
 interface User {
-  id: string;
-  name: string;
+  id: number;
+  full_name: string;
   email: string;
-  role: string;
-  status: "active" | "locked";
+  phone_number?: string;
+  role_id: string;
+  is_active: boolean;
+  avatar?: string;
+  gender?: string;
 }
 
 interface EditUserDialogProps {
@@ -40,7 +43,7 @@ interface EditUserDialogProps {
 
 const EditUserDialog = ({ user, open, onClose, onSave }: EditUserDialogProps) => {
   const form = useForm<User>({
-    values: user || { id: "", name: "", email: "", role: "", status: "active" },
+    values: user || { id: 0, full_name: "", email: "", phone_number: "", role_id: "R3", is_active: true },
   });
 
   const handleSubmit = (data: User) => {
@@ -58,10 +61,10 @@ const EditUserDialog = ({ user, open, onClose, onSave }: EditUserDialogProps) =>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="name"
+              name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tên</FormLabel>
+                  <FormLabel>Tên đầy đủ</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -84,7 +87,20 @@ const EditUserDialog = ({ user, open, onClose, onSave }: EditUserDialogProps) =>
             />
             <FormField
               control={form.control}
-              name="role"
+              name="phone_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Số điện thoại</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value || ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="role_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Vai trò</FormLabel>
@@ -95,8 +111,9 @@ const EditUserDialog = ({ user, open, onClose, onSave }: EditUserDialogProps) =>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Người dùng">Người dùng</SelectItem>
+                      <SelectItem value="R1">R1 - Admin</SelectItem>
+                      <SelectItem value="R2">R2 - Moderator</SelectItem>
+                      <SelectItem value="R3">R3 - User</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
