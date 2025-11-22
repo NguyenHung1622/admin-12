@@ -23,6 +23,13 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Login schema
 const loginSchema = z.object({
@@ -36,6 +43,8 @@ const registerSchema = z.object({
   email: z.string().email("Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
   confirmPassword: z.string(),
+  phone_number: z.string().optional(),
+  gender: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Mật khẩu không khớp",
   path: ["confirmPassword"],
@@ -66,6 +75,8 @@ const Login = () => {
       email: "",
       password: "",
       confirmPassword: "",
+      phone_number: "",
+      gender: "",
     },
   });
 
@@ -86,7 +97,7 @@ const Login = () => {
   const onRegister = async (data: RegisterFormData) => {
     try {
       setIsLoading(true);
-      await authApi.register(data.email, data.password, data.name);
+      await authApi.register(data.email, data.password, data.name, data.phone_number, data.gender);
       setRegisteredEmail(data.email);
       setShowOtpInput(true);
       toast.success("Đăng ký thành công! Vui lòng kiểm tra email để lấy mã OTP.");
@@ -270,6 +281,45 @@ const Login = () => {
                             {...field}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={registerForm.control}
+                    name="phone_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Số điện thoại (tùy chọn)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            placeholder="0123456789"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={registerForm.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Giới tính (tùy chọn)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn giới tính" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Nam">Nam</SelectItem>
+                            <SelectItem value="Nữ">Nữ</SelectItem>
+                            <SelectItem value="Khác">Khác</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
