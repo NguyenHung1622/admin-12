@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/api/proxy/:match*",
+      "destination": "https://phatdat.store/api/v1/:match*"
     }
   ]
 }

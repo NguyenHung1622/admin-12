@@ -1,14 +1,17 @@
-// --- CẤU HÌNH ĐƯỜNG DẪN API (QUAN TRỌNG) ---
+// --- CẤU HÌNH ĐƯỜNG DẪN API (ĐÃ SỬA ĐỂ DÙNG PROXY) ---
 
-// 1. Lấy link server từ biến môi trường VITE_API_URL (Cái bạn vừa điền bên Vercel)
-// 2. Nếu không có (đang chạy ở máy local), nó sẽ tự lấy "http://localhost:5000"
-const DOMAIN = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// Kiểm tra xem web đang chạy ở chế độ Production (trên mạng) hay Dev (máy tính cá nhân)
+const isProduction = import.meta.env.MODE === 'production';
 
-// 3. Ghép thêm đuôi "/api/v1" vào. Kiểm tra xem DOMAIN đã có /api/v1 chưa để tránh bị lặp.
-const API_BASE_URL = DOMAIN.endsWith("/api/v1") ? DOMAIN : `${DOMAIN}/api/v1`;
+// Logic:
+// 1. Nếu đang trên Vercel (Production): Dùng đường dẫn ảo "/api/proxy". 
+//    Vercel sẽ tự động chuyển tiếp request này đến server thật (phatdat.store) giúp tránh lỗi CORS.
+// 2. Nếu đang ở máy local: Vẫn dùng localhost:5000 để bạn code cho tiện.
+const API_BASE_URL = isProduction 
+  ? "/api/proxy" 
+  : "http://localhost:5000/api/v1";
 
 // --- HẾT PHẦN CẤU HÌNH ---
-
 const getAuthToken = () => localStorage.getItem("authToken");
 export const setAuthToken = (token: string) => localStorage.setItem("authToken", token);
 export const clearAuthToken = () => localStorage.removeItem("authToken");
