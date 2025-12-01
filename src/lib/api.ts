@@ -4,8 +4,8 @@
 // 2. Nếu không có (đang chạy ở máy local), nó sẽ tự lấy "http://localhost:5000"
 const DOMAIN = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-// 3. Ghép thêm đuôi "/api/v1" vào
-const API_BASE_URL = `${DOMAIN}/api/v1`;
+// 3. Ghép thêm đuôi "/api/v1" vào. Kiểm tra xem DOMAIN đã có /api/v1 chưa để tránh bị lặp.
+const API_BASE_URL = DOMAIN.endsWith("/api/v1") ? DOMAIN : `${DOMAIN}/api/v1`;
 
 // --- HẾT PHẦN CẤU HÌNH ---
 
@@ -32,7 +32,7 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   // console.log(`[Gửi đi] ${endpoint}`, options.body);
 
-  // Gọi fetch với đường dẫn đầy đủ (Ví dụ: https://phatdat.store/api/v1/auth/login)
+  // Gọi fetch với đường dẫn đầy đủ
   const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
   
   const rawText = await response.text();
@@ -98,7 +98,13 @@ export const adminApi = {
     getAll: () => apiCall<any>("/admin-user/get-admin"),
     update: (id: string, data: any) => apiCall<any>(`/admin-user/update-admin/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => apiCall<any>(`/admin-user/delete-admin/${id}`, { method: "DELETE" }),
-    toggleStatus: (id: string) => apiCall<any>(`/admin-user/toggle-admin/${id}`, { method: "PATCH" }),
+    
+    // --- ĐÃ SỬA ĐOẠN NÀY ---
+    // Thêm tham số 'status' vào hàm và gửi nó trong body dưới tên 'is_active'
+    toggleStatus: (id: string, status: boolean) => apiCall<any>(`/admin-user/toggle-admin/${id}`, { 
+        method: "PATCH",
+        body: JSON.stringify({ is_active: status }) 
+    }),
 };
 
 export const categoryApi = {
@@ -111,4 +117,7 @@ export const categoryApi = {
 export const serviceApi = {
     getAll: () => apiCall<any>("/service/get-all"),
     delete: (id: string) => apiCall<any>(`/service/delete/${id}`, { method: "DELETE" }),
+    // Thêm các hàm create, update nếu cần thiết cho service management
+    create: (data: any) => apiCall<any>("/service/create", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: any) => apiCall<any>(`/service/update/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 };

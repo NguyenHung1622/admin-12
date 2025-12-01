@@ -25,13 +25,12 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      // Không set loading true ở đây để tránh nháy màn hình khi refresh ngầm
       const res: any = await adminApi.getAll();
       
       if (Array.isArray(res)) setUsers(res);
       else if (res?.users && Array.isArray(res.users)) setUsers(res.users);
       else if (res?.data && Array.isArray(res.data)) setUsers(res.data);
-      else if (users.length === 0) setUsers([]); // Chỉ set rỗng nếu chưa có data
+      else if (users.length === 0) setUsers([]); 
     } catch { 
       if (users.length === 0) setUsers([]); 
     } finally { 
@@ -41,21 +40,31 @@ const UserManagement = () => {
 
   useEffect(() => { fetchUsers(); }, []);
 
-  const toggleUserStatus = async (id: string) => {
+  // --- ĐÃ SỬA ĐOẠN NÀY ---
+  // Nhận vào object User để biết trạng thái hiện tại
+  const toggleUserStatus = async (user: User) => {
     try { 
-        await adminApi.toggleStatus(id); 
+        const newStatus = !user.is_active; // Đảo ngược trạng thái (Bật -> Tắt, Tắt -> Bật)
+
+        // Gọi API với trạng thái mới (Lưu ý: api.tsx phải được sửa trước thì dòng này mới chạy đúng)
+        await adminApi.toggleStatus(String(user.id), newStatus); 
+        
         // Cập nhật UI ngay lập tức
-        setUsers(prev => prev.map(u => String(u.id) === id ? { ...u, is_active: !u.is_active } : u));
+        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_active: newStatus } : u));
+        
         toast.success("Đã cập nhật trạng thái"); 
-        fetchUsers(); // Đồng bộ lại sau
-    } catch { toast.error("Lỗi cập nhật"); }
+        
+        // fetchUsers(); // Không cần gọi lại fetchUsers để đỡ lag, vì mình đã update UI ở trên rồi
+    } catch (error) { 
+        console.error(error);
+        toast.error("Lỗi cập nhật trạng thái"); 
+    }
   };
 
   const deleteUser = async (id: string) => {
     if(!confirm("Xóa người dùng này?")) return;
     try { 
         await adminApi.delete(id); 
-        // Xóa khỏi UI ngay lập tức
         setUsers(prev => prev.filter(u => String(u.id) !== id));
         toast.success("Đã xóa"); 
         fetchUsers();
@@ -66,10 +75,8 @@ const UserManagement = () => {
     try {
       const safeRoleId = Number(updatedUser.role_id) || 3;
       
-      // Chuẩn bị dữ liệu sạch
       const { ...cleanUser } = updatedUser as any;
       
-      // Xóa các trường không được phép gửi lên
       delete cleanUser.id; 
       delete cleanUser.password_hash;
       delete cleanUser.createdAt; 
@@ -88,20 +95,14 @@ const UserManagement = () => {
         phone_number: updatedUser.phone_number || "",
       };
 
-      console.log("Updating user with payload:", payload); 
-
-      // 1. Gọi API Cập nhật
       await adminApi.update(String(updatedUser.id), payload);
       
-      // 2. QUAN TRỌNG: Cập nhật UI NGAY LẬP TỨC (Không chờ fetch lại)
       setUsers(prevUsers => prevUsers.map(user => 
         user.id === updatedUser.id ? { ...user, ...payload, role_id: safeRoleId } : user
       ));
 
       toast.success("Cập nhật thành công");
       setEditingUser(null);
-
-      // 3. Gọi fetch ngầm để đảm bảo đồng bộ dữ liệu sau 1 chút
       setTimeout(() => fetchUsers(), 500);
 
     } catch (error) {
@@ -145,7 +146,13 @@ const UserManagement = () => {
                 </TableCell>
                 <TableCell className="text-right space-x-2">
                     <Button variant="ghost" size="icon" onClick={() => setEditingUser(item)}><Edit className="h-4 w-4 text-blue-500" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => toggleUserStatus(String(item.id))}>{item.is_active ? <LockOpen className="h-4 w-4 text-green-600" /> : <Lock className="h-4 w-4 text-amber-500" />}</Button>
+                    
+                    {/* --- ĐÃ SỬA ĐOẠN NÀY --- */}
+                    {/* Truyền nguyên object item vào hàm thay vì chỉ id */}
+                    <Button variant="ghost" size="icon" onClick={() => toggleUserStatus(item)}>
+                        {item.is_active ? <LockOpen className="h-4 w-4 text-green-600" /> : <Lock className="h-4 w-4 text-amber-500" />}
+                    </Button>
+
                     <Button variant="ghost" size="icon" className="text-red-500" onClick={() => deleteUser(String(item.id))}><Trash2 className="h-4 w-4" /></Button>
                 </TableCell>
               </TableRow>
